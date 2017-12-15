@@ -1,3 +1,24 @@
+let view = {
+    displayMessage: function(msg) {
+        //get messageArea element from html
+        var messageArea = document.getElementById("messageArea");
+        //updaate text of messageArea by setting messageArea innerHTML to msg 
+        messageArea.innerHTML = msg;
+    },
+    displayHit: function(location){
+
+        let cell = document.getElementById(location);
+        //set cell class to hit
+        cell.setAttribute("class", "hit");
+    },
+    displayMiss: function(location){
+
+        let cell = document.getElementById(location);
+        cell.setAttribute("class", "miss");
+
+    }
+};
+
 let model = {
     boardsize: 7,
     numShips: 3,
@@ -6,7 +27,7 @@ let model = {
 
     ships: [{locations: [0, 0, 0], hits: ["","",""]}, 
             {locations: [0, 0, 0], hits: ["","",""]},
-            {locations: [0, 0, 0], hits: ["","",""]}],
+            {locations: [0, 0, 0], hits: ["","",""]},  ],
 
     fire: function(guess) {
         for (let i = 0; i < this.numShips; i++) {
@@ -15,9 +36,12 @@ let model = {
             //get the locations of the ships
             let locations = ship.locations; 
             // determine if the players guess matches any of the locations if there is no matches -1 is returned
-            let index = locations.indexOf(guess);
+            let index = ship.locations.indexOf(guess);
             //if index returns a number greater than or equal to 0 there is a hit and true is returned 
-            if (index >= 0) {
+            if (ship.hits[index] === "hit") {
+                view.displayMessage("Oops, you already hit that location!")
+                return true;
+            } else if (index >= 0) {
                 ship.hits[index] = "hit";
                 view.displayHit(guess);
 
@@ -32,11 +56,13 @@ let model = {
             }
             
         }
+
         view.displayMiss(guess);
         view.displayMessage("you Missed.");
          //otherwise there is no hit and false is returned 
         return false;
     },
+
     isSunk: function(ship){
         for(let i = 0; i < this.shipLength; i++) {
             //check each lacation for a ship. if any location does not equal hit then the ship is still floating and isSunk is false
@@ -50,8 +76,9 @@ let model = {
 
     },
 
-   /* generateShipLocations: function() {
+    generateShipLocations: function() {
         let locations;
+
         for (let i = 0; i < this.numShips; i++) {
             do{
                locations = this.generateShip(); 
@@ -59,19 +86,23 @@ let model = {
             this.ships[i].locations = locations;
       }
     },
+
     generateShip: function() {
         let direction = Math.floor(Math.random() * 2);
         let row;
-        let Col;
+        let col;
+
         if (direction === 1){
             //generate starting location for horizontal ship
             row = Math.floor(Math.random() * this.boardSize);
-			col = Math.floor(Math.random() * (this.boardSize - this.shipLength + 1));
-        } else{
+			col = Math.floor(Math.random() * (this.boardSize - (this.shipLength + 1)));
+        } 
+        else{
             // generate starting location for vertical ship
-            row = Math.floor(Math.random() * (this.boardSize - this.shipLength + 1));
+            row = Math.floor(Math.random() * (this.boardSize - (this.shipLength + 1)));
 			col = Math.floor(Math.random() * this.boardSize);
-        }
+        };
+        
         let newShipLocations = [];
         for(let i = 0; i < this.shipLength; i++){
             if(direction === 1) {
@@ -97,34 +128,8 @@ let model = {
 		}
 		return false;
 	}
-    */
+    
 };
-
-
-let view = {
-    displayMessage: function(msg) {
-        //get messageArea element from html
-        var messageArea = document.getElementById("messageArea");
-        //updaate text of messageArea by setting messageArea innerHTML to msg 
-        messageArea.innerHTML = msg;
-    },
-    displayHit: function(location){
-
-        let cell = document.getElementById(location);
-        //set cell class to hit
-        cell.setAttribute("class", "hit");
-    },
-    displayMiss: function(location){
-
-        let cell = document.getElementById(location);
-        cell.setAttribute("class", "miss");
-
-    }
-};
-
-
-
-
 
 
 let controller = {
@@ -132,7 +137,7 @@ let controller = {
     guesses: 0,
 
     processGuess: function(guess){
-        let location = parseGuess(guess);
+        let location = controller.parseGuess(guess);
         if (location) {
             this.guesses++;
             let hit = model.fire(location);
@@ -141,61 +146,80 @@ let controller = {
             }
         }
 
-    }
-}
+    },
+    handleFireButton: function(){
 
+        let guessInput = document.getElementById("guessInput");
+        let guess = guessInput.value.toUpperCase();
+        controller.processGuess(guess);
+    
+        guessInput.value = "";
+    },
 
-function parseGuess(guess){
-    let alphabet = ["A", "B", "C", "D", "E", "F", "G"];
-    if (guess === null || guess.length !== 2) {
-        alert("Oops, Please enter a letter and a number on the board.");
-    } else {
-        let firstChar = guess.charAt(0);
-        let row = alphabet.indexOf(firstChar);
-        let column = guess.charAt(1);
+    handleKeyPress: function(e) {
+        let fireButton = document.getElementById("fireButton");
+        e = e || window.event;
+    
+        if (e.keyCode === 13) {
+            fireButton.click();
+           
+            return false;
+        }
+    },
+
+    init: function(){
+        let fireButton = document.getElementById("fireButton");
+        fireButton.onclick = controller.handleFireButton;
+
+        let guessInput = document.getElementById("guessInput");
+        guessInput.onkeypress = controller.handleKeyPress;
+        guessInput.focus();
+
+           
+        addClickEvents();
+        function addClickEvents(){
+            let cells = document.getElementById("grid").getElementsByTagName("td");
+            console.log(cells);
+            for(let i = 0; i <cells.length; i++){
+                cells[i].onclick = function() {
+                    let cellNum = cells[i].id;
+                    let cellLetter = "ABCDEFG"[cellNum[0]];
+                    let cellLocation = cellLetter + cellNum[1];
+                    guessInput.value = cellLocation;
+                    controller.handleFireButton();
+                }
+            }
+        
+        }
+        model.generateShipLocations();
+    },
+    parseGuess: function(guess){
+        let alphabet = ["A", "B", "C", "D", "E", "F", "G"];
+        if (guess === null || guess.length !== 2) {
+            alert("Oops, Please enter a letter and a number on the board.");
+        } else {
+            let firstChar = guess.charAt(0);
+            let row = alphabet.indexOf(firstChar);
+            let column = guess.charAt(1);
 
         if(isNaN(row) || isNaN(column)) {
                 alert("oops, that isn't on the board.");
         }  else if (row < 0 || row >= model.boardSize ||
             column < 0 || column >= model.boardSize) {
-     alert("Oops, that's off the board!");
+             alert("Oops, that's off the board!");
         } else {
             return row + column;
         }
         
     }
     return null;
-}
-
-
-function handleFireButton(){
-    let guessInput = document.getElementById("guessInput");
-    let guess = guessInput.value.toUpperCase();
-    controller.processGuess(guess);
-
-    guessInput.value = "";
-}
-
-function init(){
-    let fireButton = document.getElementById("fireButton");
-    fireButton.onclick = handleFireButton;
-   //model.generateShipLocations();
-    
-    function addClickEvents(){
-        let cells = document.getElementById("grid").getElementsByTagName("td");
-        console.log(cells);
-        for(let i = 0; i <cells.length; i++){
-            cells.onclick = function() {
-                let cellNum = cells[i].id;
-                let cellLetter = "ABCDEFG"[cellNum[0]];
-                let cellLocation = cellLetter + cellNum[1];
-                guessInput.value = cellLocation;
-                controller.handleFireButton();
-            }
-        }
     }
-}
-let cells = document.getElementById("grid").getElementsByTagName("td");
-console.log(cells);
-window.onload = init;
+
+
+
+};
+
+window.onload = controller.init;
+
+
 
